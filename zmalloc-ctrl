@@ -1,0 +1,163 @@
+#!/bin/sh
+# Copyright (C) 2012  Andrew V. Stepanov <stanv@altlinux.org>
+#
+# The zmalloc utility for the libzmalloc project
+#
+# This file is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+
+
+# Require libshell
+. shell-error
+. shell-quote
+. shell-config
+. shell-var
+. shell-args
+
+
+# Backcall for libshell
+show_help()
+{
+  cat <<EOF
+$PROG - control libzmalloc.
+
+Usage: $PROG [options]
+
+Options:
+-e, --enable                      enable libzmalloc in system;
+-d, --disable                     disable libzmalloc in system;
+-s, --status                      shows current status libzmalloc (ret: 0 - enabled, 1 - disabled);
+-q, --quiet                       try to be more quiet;
+-v, --verbose                     print a message for each action;
+-V, --version                     print program version and exit;
+-h, --help                        show this text and exit.
+
+Report bugs to http://bugs.altlinux.ru/
+
+EOF
+  exit
+}
+
+
+# Backcall for libshell
+print_version()
+{
+  local prog
+  prog="$1" && shift
+  cat <<EOF
+  $prog version 0.2
+  Written by Andrew V. Stepanov <stanv@altlinux.org>
+
+  Copyright (C) 2012  Andrew V. Stepanov <stanv@altlinux.org>
+  This is free software; see the source for copying conditions.  There is NO
+  warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+EOF
+  exit
+}
+
+
+CONFIG="/etc/ld.so.preload"
+
+
+# Test zmalloc is enabled
+# Return 0 if enabled, otherwise 1
+zmalloc_test() {
+  if grep -qs '^/lib/libzmalloc\.so\.0\.1$' "$CONFIG"; then
+    return
+  fi
+
+  return 1
+}
+
+
+# Enable zmalloc
+zmalloc_enable() {
+  if zmalloc_test; then
+    fatal "libzmalloc is already enabled in system."
+  fi
+
+  if ! [ -w "$(dirname $CONFIG)" ]; then
+    fatal "Can't write $CONFIG."
+  fi
+
+  echo '/lib/libzmalloc.so.0.1' >> "$CONFIG" && /sbin/ldconfig
+  test -z "$quiet" &&  message "libzmalloc now enabled."
+
+  exit
+}
+
+
+# Disable zmalloc
+zmalloc_disable() {
+  if ! zmalloc_test; then
+    fatal "libzmalloc is already disabled in system."
+  fi
+
+  if ! [ -f "$CONFIG" -a -w "$CONFIG" ]; then
+    fatal "Can't write $CONFIG."
+  fi
+
+  sed '\,^/lib/libzmalloc.so.0.1$, d' -i "$CONFIG" && /sbin/ldconfig
+  test -z "$quiet" &&  message "libzmalloc now disabled."
+
+  exit
+}
+
+
+# Status zmalloc
+zmalloc_status() {
+  local ret=
+
+  if zmalloc_test; then
+    test -z "$quiet" && message "libzmalloc enabled."
+    ret=0
+  else
+    test -z "$quiet" && message "libzmalloc disabled."
+    ret=1
+  fi
+
+  exit $ret
+}
+
+
+TEMP=`getopt -n $PROG -o e,d,s,$getopt_common_opts -l enable,disable,status,$getopt_common_longopts -- "$@"` ||
+  show_usage
+eval set -- "$TEMP"
+
+status= disable= enable=
+
+while :; do
+  case "$1" in
+    -s|--status) status="yes"
+      ;;
+    -d|--disable) disable="yes"
+      ;;
+    -e|--enable) enable="yes"
+      ;;
+    --) shift; break
+      ;;
+    *) parse_common_option "$1"
+      ;;
+  esac
+  shift
+done
+
+test -n "$status" && zmalloc_status
+test -n "$disable" && zmalloc_disable
+test -n "$enable" && zmalloc_enable
+
+show_usage 'Insufficient arguments.'
+
+# vim: autoindent tabstop=2 shiftwidth=2 expandtab softtabstop=2 filetype=sh

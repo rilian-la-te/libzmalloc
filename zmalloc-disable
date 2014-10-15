@@ -1,0 +1,3 @@
+#!/bin/sh
+
+sed '\,^/lib/libzmalloc.so.0.1$, d' -i /etc/ld.so.preload && /sbin/ldconfig
