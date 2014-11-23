@@ -8,5 +8,11 @@ void *malloc(size_t size){
 }
 
 void free(void *ptr){
-    cfree(ptr);
+    char* casted_ptr = (char*)ptr;
+    size_t byte_count = sizeof(*casted_ptr);
+    FILE *fp;
+    fp = fopen("/dev/urandom", "r");
+    fread(casted_ptr, 1, byte_count, fp);
+    fclose(fp);
+    free(ptr);
 }
