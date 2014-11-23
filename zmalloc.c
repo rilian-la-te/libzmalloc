@@ -8,5 +8,5 @@ void *malloc(size_t size){
 }
 
 void free(void *ptr){
-    free(ptr);
+    cfree(ptr);
 }
